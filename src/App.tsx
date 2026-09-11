@@ -3,6 +3,7 @@ import { PromptInput } from './components/PromptInput';
 import { ComponentCard } from './components/ComponentCard';
 import { useComponentGenerator } from './hooks/useComponentGenerator';
 import type { Provider } from './types';
+import { loadWorkspace, saveWorkspace } from './utils/workspaceStorage';
 import './App.css';
 
 const PROVIDER_CONFIG = {
@@ -11,15 +12,17 @@ const PROVIDER_CONFIG = {
 } as const;
 
 function App() {
+  const [restoredWorkspace] = useState(() => loadWorkspace());
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [provider, setProvider] = useState<Provider>('google');
+  const [provider, setProvider] = useState<Provider>(restoredWorkspace?.provider ?? 'google');
+  const [promptHistory, setPromptHistory] = useState<string[]>(restoredWorkspace?.promptHistory ?? []);
   const [envKeys, setEnvKeys] = useState<Record<Provider, boolean>>({
     anthropic: false,
     google: false,
   });
   const { components, isLoading, error, generate, removeComponent, clearAll } =
-    useComponentGenerator();
+    useComponentGenerator(restoredWorkspace?.components ?? []);
 
   useEffect(() => {
     fetch('/api/config')
@@ -28,6 +31,10 @@ function App() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    saveWorkspace({ provider, promptHistory, components });
+  }, [components, promptHistory, provider]);
+
   const hasEnvKey = envKeys[provider];
 
   const handleGenerate = (prompt: string) => {
@@ -35,6 +42,7 @@ function App() {
       alert(`${PROVIDER_CONFIG[provider].label} API 키를 입력하거나 .env에 설정해주세요.`);
       return;
     }
+    setPromptHistory((previous) => [prompt, ...previous.filter((item) => item !== prompt)]);
     generate(prompt, apiKey || undefined, provider);
   };
 
