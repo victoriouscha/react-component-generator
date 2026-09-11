@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isPromptLengthValid, MAX_PROMPT_LENGTH } from '../utils/promptValidation';
 
 interface PromptInputProps {
   onGenerate: (prompt: string) => void;
@@ -16,10 +17,12 @@ const EXAMPLES = [
 
 export function PromptInput({ onGenerate, isLoading }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
+  const isLengthValid = isPromptLengthValid(prompt);
+  const canGenerate = Boolean(prompt.trim()) && isLengthValid && !isLoading;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim() && !isLoading) {
+    if (canGenerate) {
       onGenerate(prompt.trim());
     }
   };
@@ -41,6 +44,7 @@ export function PromptInput({ onGenerate, isLoading }: PromptInputProps) {
           placeholder="예: 고객 목록 테이블 위에 들어갈 검색 필터 바를 만들어줘. 상태, 담당자, 날짜 범위 필터가 필요해."
           className="prompt-textarea"
           rows={3}
+          maxLength={MAX_PROMPT_LENGTH}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               handleSubmit(e);
@@ -50,7 +54,7 @@ export function PromptInput({ onGenerate, isLoading }: PromptInputProps) {
         <button
           type="submit"
           className="btn-generate"
-          disabled={!prompt.trim() || isLoading}
+          disabled={!canGenerate}
         >
           {isLoading ? (
             <span className="loading-spinner">생성 중...</span>
@@ -59,6 +63,10 @@ export function PromptInput({ onGenerate, isLoading }: PromptInputProps) {
           )}
         </button>
       </form>
+      <p aria-live="polite">
+        {prompt.length}/{MAX_PROMPT_LENGTH}
+        {!isLengthValid && <span role="alert"> 프롬프트는 500자 이내로 입력해주세요.</span>}
+      </p>
       <div className="prompt-examples">
         <span className="examples-label">예시 프롬프트</span>
         {EXAMPLES.map((example) => (
